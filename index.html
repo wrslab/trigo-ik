@@ -66,7 +66,9 @@
 <section id="viewer">
   <h2>All solutions in 3-D</h2>
   <p class="lead">
-    Pick a robot and a target. Each view shows one IK solution of the same target pose of the flange.
+    Pick a robot and a target. The solutions are computed live in your browser by
+    <a href="trigo_ik/trigo_ik.js">trigo_ik.js</a>, the JavaScript version of the solver.
+    Each view shows one IK solution of the same target pose of the flange.
     Drag to rotate all views together, scroll to zoom, right-drag to pan.
     The targets are forward kinematics of random joint vectors, and joint limits are not applied.
   </p>
@@ -146,7 +148,8 @@
   <p>
     One Python file, NumPy only, MIT License. It reads DH parameters or a URDF file, holds extra joints
     of redundant arms at given angles, and returns every solution with its angles in
-    <span class="m">[-\pi,\pi)</span>.
+    <span class="m">[-\pi,\pi)</span>. A JavaScript version with the same interface and no dependencies
+    runs in the browser and in Node, and it is the one that computes the solutions on this page.
   </p>
 <pre><code>import numpy as np
 from trigo_ik import TrigoIK
@@ -157,9 +160,18 @@ Q = ik.ik(T)                                              # (n, 6): all solution
 print(len(Q), ik.residual(Q, T).max())
 
 ik7 = TrigoIK.from_urdf("robots/fr3.urdf", locked={"joint3": 0.4})   # 7-axis arm, joint 3 held</code></pre>
+<pre><code>// JavaScript (ES module, browser or Node)
+import { TrigoIK } from './trigo_ik.js';
+
+const H = Math.PI / 2;
+const ik = TrigoIK.fromDH({ d: [0, 0, 0, 0.5, 0, 0], a: [0, 0.6, 0, 0, 0.13, 0], alpha: [H, 0, -H, H, H, 0] });
+const T = ik.fk([0.1, -0.5, 0.3, -1.2, 0.4, 0.9]);
+const Q = ik.ik(T);                                       // array of 6-vectors
+// TrigoIK.fromURDF(urdfText, { locked: { joint3: 0.4 } }) reads a URDF file's text</code></pre>
   <table class="files">
     <tbody>
       <tr><td><a href="trigo_ik/trigo_ik.py">trigo_ik.py</a></td><td>the solver, in a single file</td></tr>
+      <tr><td><a href="trigo_ik/trigo_ik.js">trigo_ik.js</a></td><td>the same solver in JavaScript, no dependencies</td></tr>
       <tr><td><a href="trigo_ik/example.py">example.py</a></td><td>DH robot, URDF robot, 7-axis arm with one joint held</td></tr>
       <tr><td><a href="trigo_ik/experiments.py">experiments.py</a></td><td>smaller-scale versions of the experiments (about half a minute)</td></tr>
       <tr><td><a href="trigo_ik/show_solutions.py">show_solutions.py</a></td><td>draws all solutions of a target with matplotlib</td></tr>

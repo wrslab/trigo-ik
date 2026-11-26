@@ -13,6 +13,7 @@ six revolute joints are solved with the extra joints held at given angles.
 | File | Contents |
 |---|---|
 | `trigo_ik.py` | The solver, in a single file. It reads DH parameters or a URDF file. |
+| `trigo_ik.js` | The same solver in JavaScript (ES module, browser or Node), with no dependencies. |
 | `example.py` | Minimal use: a DH robot, a URDF robot, and a 7-axis arm with one joint held. |
 | `experiments.py` | Smaller-scale versions of the experiments in Section VI of the paper. |
 | `show_solutions.py` | Draws all solutions of a target, one 3-D view each. This is the only file that needs matplotlib. |
@@ -61,6 +62,25 @@ print(len(Q), ik.residual(Q, T).max())
 **Joint limits** are not applied. `ik` returns every solution with its angles wrapped to [-pi, pi), and you can filter or shift them by 2π against your own limits.
 
 **Continuous self-motion:** if all twelve elimination routes are degenerate, the chain has continuous self-motion and `ik.self_motion` is `True`. For example, the KUKA LBR iiwa with its elbow joint held is such a chain. In that case `ik.ik(T)` raises `SelfMotionError` instead of returning an empty set.
+
+## JavaScript
+
+`trigo_ik.js` follows the same algorithm with the same interface in camelCase. It writes out the linear algebra that NumPy takes from LAPACK: complex eigenvalues by Hessenberg reduction and shifted QR, singular values by one-sided Jacobi, and linear systems by LU. On the robots of the experiments, it selects the same route as the Python version and returns the same solutions.
+
+```js
+import { TrigoIK } from './trigo_ik.js';
+
+const H = Math.PI / 2;
+const ik = TrigoIK.fromDH({ d: [0, 0, 0, 0.5, 0, 0], a: [0, 0.6, 0, 0, 0.13, 0], alpha: [H, 0, -H, H, H, 0] });
+const T = ik.fk([0.1, -0.5, 0.3, -1.2, 0.4, 0.9]);   // 4x4 as nested arrays
+const Q = ik.ik(T);                                   // array of 6-vectors, angles in [-pi, pi)
+console.log(Q.length, Math.max(...ik.residual(Q, T)));
+```
+
+- `TrigoIK.fromDH({ d, a, alpha, theta0, modified, locked, base, tool })` takes the same DH options as Python.
+- `TrigoIK.fromURDF(text, { baseLink, tipLink, locked })` takes the text of a URDF file, because a browser has no file system.
+- `TrigoIK.fromElements(elems, locked)` takes a chain as `{type: 'fixed', tf}` and `{type: 'rev', axis, name}` elements.
+- `ik.selfMotion` and `SelfMotionError` work as in Python.
 
 ## Drawing the solutions
 

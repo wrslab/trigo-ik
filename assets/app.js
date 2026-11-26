@@ -2,6 +2,7 @@
 // One WebGL canvas covers the grid; each cell is drawn with a scissor viewport.
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { TrigoIK } from '../trigo_ik/trigo_ik.js';
 
 const $ = id => document.getElementById(id);
 const stage = $('stage'), grid = $('grid'), canvas = $('gl'), info = $('info'), loading = $('loading');
@@ -150,38 +151,71 @@ function histText(h) {
   return Object.entries(h).map(([k, v]) => `${k}: ${(100 * v / tot).toFixed(v / tot < 0.01 ? 1 : 0)}%`).join(', ');
 }
 
-function showTarget(t) {
-  cur.target = t;
+// ------------------------------------------------------------------ live solving (trigo_ik.js)
+function solverFor(meta, g) {
+  // TrigoIK of the same joint chain as the meshes, built in the browser (route selection included)
+  const path = [];
+  for (let k = meta.links.length - 1; k > 0; k = meta.links[k].parent) path.push(k);
+  const elems = [];
+  for (const k of path.reverse()) {
+    const L = meta.links[k];
+    elems.push({ type: 'fixed', tf: L.tf0 }, { type: 'rev', axis: L.axis, name: L.q });
+  }
+  const t0 = performance.now();
+  const ik = TrigoIK.fromElements(elems, g.held === undefined ? null : { [g.held]: g.held_angle });
+  const base = new Array(meta.n_q).fill(0);
+  if (g.held !== undefined) base[g.held] = g.held_angle;
+  return { ik, base, buildMs: performance.now() - t0 };
+}
+
+function solveAndShow(T, hist) {
+  const { ik, base } = cur.solver;
+  const t0 = performance.now();
+  const S = ik.ik(T);
+  const ms = performance.now() - t0;
+  const res = S.length ? Math.max(...ik.residual(S, T)) : 0;
+  const sols = S.map(s => { const v = base.slice(); ik.jointNames.forEach((j, i) => { v[j] = s[i]; }); return v; });
+  cur.target = { sols };
   grid.innerHTML = '';
-  t.sols.forEach((_, i) => {
+  sols.forEach((_, i) => {
     const d = document.createElement('div');
     d.className = 'cell';
     d.innerHTML = `<span>Solution ${i + 1}</span>`;
     grid.appendChild(d);
   });
-  const n = t.sols.length;
+  const n = sols.length;
   grid.style.gridTemplateColumns = window.innerWidth <= 820 ? 'repeat(2, 1fr)'
     : `repeat(${n <= 2 ? 2 : n <= 9 && n % 3 === 0 ? 3 : 4}, 1fr)`;
-  const total = Object.values(t.hist).reduce((a, b) => a + b, 0);
-  info.innerHTML = `<b>${n} solutions</b>, largest pose residual ${fmtRes(t.residual)}. ` +
-    `<span class="muted">Over ${total} random targets: ${histText(t.hist)}.</span>`;
-  fitCamera(cur, t.sols);
+  const total = Object.values(hist).reduce((a, b) => a + b, 0);
+  info.innerHTML = `<b>${n} solutions</b>, solved in your browser in <b>${ms.toFixed(1)} ms</b>, ` +
+    `largest pose residual ${fmtRes(res)}. ` +
+    `<span class="muted">Over ${total} random targets: ${histText(hist)}.</span>`;
+  if (n) fitCamera(cur, sols);
   draw();
 }
 
+function randomTarget() {
+  const q = Array.from({ length: 6 }, () => (Math.random() * 2 - 1) * Math.PI);
+  return cur.solver.ik.fk(q);
+}
+
 function showGroup(g) {
-  if (g.self_motion) {
+  cur.group = g;
+  cur.solver = cur.solvers.get(g) ?? cur.solvers.set(g, solverFor(cur.meta, g)).get(g);
+  if (cur.solver.ik.selfMotion) {
     grid.innerHTML = `<div class="selfmotion">With ${g.name.replace(' held', '')} held, all twelve elimination routes
       are degenerate: the remaining chain has continuous self-motion, and the solver reports it.</div>`;
     $('targets').innerHTML = '';
-    info.innerHTML = '<b>Self-motion detected</b>';
+    info.innerHTML = '<b>Self-motion detected</b> in your browser.';
     cur.target = null;
     draw();
     return;
   }
   const labels = { most: 'Most solutions', typical: 'Typical' };
-  chips($('targets'), g.targets.map(t => ({ label: `${labels[t.tag]} (${t.n})` })), i => showTarget(g.targets[i]), 0);
-  showTarget(g.targets[0]);
+  const hist = g.targets[0].hist;
+  chips($('targets'), [...g.targets.map(t => ({ label: `${labels[t.tag]} (${t.n})` })), { label: 'New random target ↻' }],
+    i => solveAndShow(i < g.targets.length ? g.targets[i].T : randomTarget(), hist), 0);
+  solveAndShow(g.targets[0].T, hist);
 }
 
 async function pickRobot(i) {
@@ -190,6 +224,7 @@ async function pickRobot(i) {
   loading.style.display = 'none';
   if (cur) scene.remove(cur.root);
   cur = r;
+  cur.solvers ??= new Map();
   scene.add(r.root);
   const gs = r.meta.groups;
   $('heldRow').style.display = r.meta.axes === 7 ? '' : 'none';
@@ -233,7 +268,14 @@ function draw() {
 }
 
 controls.addEventListener('change', draw);
-window.addEventListener('resize', () => { if (cur && cur.target) showTarget(cur.target); else draw(); });
+window.addEventListener('resize', () => {
+  if (cur && cur.target) {
+    const n = cur.target.sols.length;
+    grid.style.gridTemplateColumns = window.innerWidth <= 820 ? 'repeat(2, 1fr)'
+      : `repeat(${n <= 2 ? 2 : n <= 9 && n % 3 === 0 ? 3 : 4}, 1fr)`;
+  }
+  draw();
+});
 (function tick() { requestAnimationFrame(tick); controls.update(); })();
 
 robots = await fetch('data/robots.json').then(r => r.json());
