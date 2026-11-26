@@ -1,8 +1,13 @@
 // All IK solutions of a target, one view per solution, all views share one camera.
 // One WebGL canvas covers the grid; each cell is drawn with a scissor viewport.
-import * as THREE from 'three';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { TrigoIK } from '../trigo_ik/trigo_ik.js';
+// A classic script, not a module: the anonymous mirror serves the page in a CSP sandbox with an
+// opaque origin, where local module scripts and fetch() need CORS headers that it does not send.
+// three.js comes by dynamic import from the CDN, which allows any origin; the solver
+// (assets/trigo_ik.page.js) and the data (data/*.js) come by <script> tags.
+(async () => {
+const THREE = await import('three');
+const { OrbitControls } = await import('three/addons/controls/OrbitControls.js');
+const { TrigoIK } = window;
 
 const $ = id => document.getElementById(id);
 const stage = $('stage'), grid = $('grid'), canvas = $('gl'), info = $('info'), loading = $('loading');
@@ -39,12 +44,27 @@ async function gunzip(buf) {
   return await new Response(new Blob([buf]).stream().pipeThrough(ds)).arrayBuffer();
 }
 
+function loadScript(src) {
+  return new Promise((ok, fail) => {
+    const s = document.createElement('script');
+    s.src = src;
+    s.onload = ok;
+    s.onerror = () => fail(new Error('cannot load ' + src));
+    document.head.appendChild(s);
+  });
+}
+
+async function loadData(key) {
+  if (!(window.TRIGO_DATA && key in window.TRIGO_DATA)) await loadScript(`data/${key}.js`);
+  return window.TRIGO_DATA[key];
+}
+
 async function loadRobot(key) {
   if (cache[key]) return cache[key];
-  const [meta, raw] = await Promise.all([
-    fetch(`data/${key}.json`).then(r => r.json()),
-    fetch(`data/${key}.bin.gz`).then(r => r.arrayBuffer()).then(gunzip),
-  ]);
+  const { meta, mesh } = await loadData(key);
+  const bin = atob(mesh), bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  const raw = await gunzip(bytes.buffer);
   const root = new THREE.Group();
   const linkObjs = meta.links.map(() => {
     const g = new THREE.Group();
@@ -278,8 +298,9 @@ window.addEventListener('resize', () => {
 });
 (function tick() { requestAnimationFrame(tick); controls.update(); })();
 
-robots = await fetch('data/robots.json').then(r => r.json());
+robots = await loadData('robots');
 const d6 = robots.filter(r => r.axes === 6), d7 = robots.filter(r => r.axes === 7);
 robots = [...d6, ...d7];
 chips($('robots'), robots.map(r => ({ label: r.label })), pickRobot, 0);
 pickRobot(0);
+})();

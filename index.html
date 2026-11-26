@@ -192,6 +192,19 @@ document.querySelectorAll('.m').forEach(e => {
   try { katex.render(e.textContent, e, { throwOnError: false }); } catch (_) {}
 });
 </script>
-<script type="module" src="assets/app.js"></script>
+<script>
+// On the anonymous mirror (/w/...), the page is sandboxed and cannot start downloads: the download
+// buttons lead to the repository view (/r/...) instead, which has its own download button.
+if (/\/w\//.test(location.pathname)) {
+  const repo = location.pathname.replace('/w/', '/r/').replace(/[^/]*$/, '');
+  document.querySelectorAll('a[download]').forEach(a => {
+    a.removeAttribute('download');
+    a.href = repo;
+    a.textContent = 'Code repository (download there)';
+  });
+}
+</script>
+<script src="assets/trigo_ik.page.js"></script>
+<script src="assets/app.js"></script>
 </body>
 </html>
