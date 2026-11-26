@@ -1,0 +1,67 @@
+<?xml version="1.0"?>
+<!-- fr3: kinematics only (joint frames, axes, limits), no meshes -->
+<robot name="fr3">
+  <link name="base_link"/>
+  <link name="link1"/>
+  <link name="link2"/>
+  <link name="link3"/>
+  <link name="link4"/>
+  <link name="link5"/>
+  <link name="link6"/>
+  <link name="link7"/>
+  <link name="flange"/>
+  <joint name="joint1" type="revolute">
+    <parent link="base_link"/>
+    <child link="link1"/>
+    <origin xyz="0 0 0.333" rpy="0 0 0"/>
+    <axis xyz="0 0 1.0"/>
+    <limit lower="-2.8973" upper="2.8973" effort="0" velocity="0"/>
+  </joint>
+  <joint name="joint2" type="revolute">
+    <parent link="link1"/>
+    <child link="link2"/>
+    <origin xyz="0 0 0" rpy="-1.5707963267948966 0 0"/>
+    <axis xyz="0 0 1.0"/>
+    <limit lower="-1.8326" upper="1.8326" effort="0" velocity="0"/>
+  </joint>
+  <joint name="joint3" type="revolute">
+    <parent link="link2"/>
+    <child link="link3"/>
+    <origin xyz="0 -0.316 0" rpy="1.5707963267948966 0 0"/>
+    <axis xyz="0 0 1.0"/>
+    <limit lower="-2.8972" upper="2.8972" effort="0" velocity="0"/>
+  </joint>
+  <joint name="joint4" type="revolute">
+    <parent link="link3"/>
+    <child link="link4"/>
+    <origin xyz="0.0825 0 0" rpy="1.5707963267948966 0 0"/>
+    <axis xyz="0 0 1.0"/>
+    <limit lower="-3.0718" upper="-0.1222" effort="0" velocity="0"/>
+  </joint>
+  <joint name="joint5" type="revolute">
+    <parent link="link4"/>
+    <child link="link5"/>
+    <origin xyz="-0.0825 0.384 0" rpy="-1.5707963267948966 0 0"/>
+    <axis xyz="0 0 1.0"/>
+    <limit lower="-2.8798" upper="2.8798" effort="0" velocity="0"/>
+  </joint>
+  <joint name="joint6" type="revolute">
+    <parent link="link5"/>
+    <child link="link6"/>
+    <origin xyz="0 0 0" rpy="1.5707963267948966 0 0"/>
+    <axis xyz="0 0 1.0"/>
+    <limit lower="0.4364" upper="4.6251" effort="0" velocity="0"/>
+  </joint>
+  <joint name="joint7" type="revolute">
+    <parent link="link6"/>
+    <child link="link7"/>
+    <origin xyz="0.088 0 0" rpy="1.5707963267948966 0 0"/>
+    <axis xyz="0 0 1.0"/>
+    <limit lower="-3.0543" upper="3.0543" effort="0" velocity="0"/>
+  </joint>
+  <joint name="flange_joint" type="fixed">
+    <parent link="link7"/>
+    <child link="flange"/>
+    <origin xyz="0 0 0.107" rpy="0 0 0"/>
+  </joint>
+</robot>

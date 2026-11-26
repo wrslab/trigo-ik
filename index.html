@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TrigoIK: All IK Solutions of General 6R Manipulators</title>
+<meta name="description" content="A fast and complete inverse kinematics solver for general 6R manipulators, with interactive 3-D views of all solutions.">
+<link rel="stylesheet" href="assets/style.css">
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <h1>A Fast and Complete Inverse Kinematics Solver<br>for General 6R Manipulators</h1>
+    <p class="authors">Anonymous Authors</p>
+    <p class="venue">Submitted to IEEE Transactions on Robotics</p>
+    <nav class="buttons">
+      <a class="btn primary" href="trigo_ik.zip" download>Download code (.zip)</a>
+      <a class="btn" href="trigo_ik/trigo_ik.py">trigo_ik.py</a>
+      <a class="btn" href="#viewer">3-D solutions</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+<section class="tldr">
+  <div class="card">
+    <div class="big">all</div>
+    <p>isolated IK solutions of any 6R geometry, up to 16, from numbers alone</p>
+  </div>
+  <div class="card">
+    <div class="big">1.2 ms</div>
+    <p>median per query, in pure Python with NumPy</p>
+  </div>
+  <div class="card">
+    <div class="big">0 missed</div>
+    <p>against dense multistart numerical IK on random and commercial arms</p>
+  </div>
+</section>
+
+<section>
+  <h2>Abstract</h2>
+  <p>
+    Algebraic inverse kinematics (IK) of general six-revolute (6R) manipulators returns all solutions,
+    but it rests on long symbolic derivations that few libraries implement. Closed-form solvers avoid
+    them only for special geometries such as a spherical wrist. This work presents a solver that takes
+    any 6R geometry as numbers and returns all isolated IK solutions in about one millisecond, in pure
+    Python. The matrices of the classical elimination are long symbolic expressions, but their entries
+    are coefficients of trigonometric polynomials that are easy to <em>evaluate</em> numerically, and
+    whose largest exponent is known in advance. Evaluating them at a few equally spaced angles and
+    applying a discrete Fourier transform yields the coefficients exactly, with no symbolic algebra.
+    The real roots of the elimination determinant are then eigenvalues of modulus one of a companion
+    matrix, and the remaining angles follow one at a time from small eigenvalue problems.
+  </p>
+</section>
+
+<section id="viewer">
+  <h2>All solutions in 3-D</h2>
+  <p class="lead">
+    Pick a robot and a target. Each view shows one IK solution of the same target pose of the flange.
+    Drag to rotate all views together, scroll to zoom, right-drag to pan.
+    The targets are forward kinematics of random joint vectors, and joint limits are not applied.
+  </p>
+  <div class="controls">
+    <div class="row"><span class="lab">Robot</span><div id="robots" class="chips"></div></div>
+    <div class="row" id="heldRow"><span class="lab">Held joint</span><div id="groups" class="chips"></div></div>
+    <div class="row"><span class="lab">Target</span><div id="targets" class="chips"></div></div>
+  </div>
+  <p id="info" class="info">&nbsp;</p>
+  <div id="stage">
+    <canvas id="gl"></canvas>
+    <div id="grid"></div>
+    <div id="loading">Loading…</div>
+  </div>
+  <p class="note">
+    Six-axis arms: the solver runs directly. Seven-axis arms: one joint is held at a random angle,
+    and the solver returns all solutions of the remaining six. When all twelve elimination routes are
+    degenerate, the chain has continuous self-motion, and the solver reports it instead of an empty set.
+    Robot meshes are the vendors' visual models.
+  </p>
+</section>
+
+<section>
+  <h2>Method</h2>
+  <div class="split">
+    <figure>
+      <img src="img/fig_q3flow.png" alt="Computing the polynomial in q3 by DFTs" loading="lazy">
+    </figure>
+    <div>
+      <ol class="steps">
+        <li><b>Drop <span class="m">q_6</span>.</b> Two columns of the loop equation do not depend on <span class="m">q_6</span>.</li>
+        <li><b>Coefficients by DFT.</b> The Raghavan&ndash;Roth quantities are trigonometric polynomials of known degree.
+            Their values on a small grid of equally spaced angles give all coefficients exactly through a DFT.</li>
+        <li><b>Eliminate.</b> A left null space removes two joint angles and leaves the
+            <span class="m">12\times12</span> matrix <span class="m">\Sigma(q_3)</span>.</li>
+        <li><b>Solve for <span class="m">q_3</span>.</b> With <span class="m">z=e^{iq_3}</span>, the roots of
+            <span class="m">\det\Sigma</span> are eigenvalues of modulus one of a companion matrix.</li>
+        <li><b>Back-substitute.</b> <span class="m">q_4</span> from a <span class="m">6\times6</span> eigenproblem,
+            <span class="m">q_5</span> from a quadratic, <span class="m">q_1, q_2</span> from a linear system,
+            and <span class="m">q_6</span> from the remaining rotation.</li>
+        <li><b>Twelve routes.</b> Starting at each joint, forwards and backwards, gives twelve equivalent eliminations.
+            The first route with full rank is selected once per robot, which handles parallel and intersecting axes.</li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Results</h2>
+  <figure class="wide">
+    <img src="img/fig_exp.png" alt="Experimental results" loading="lazy">
+    <figcaption>
+      (a1)&ndash;(a3) 2000 random 6R manipulators: number of real solutions, time per query, largest pose residual.
+      (b) Distribution of the number of solutions for six commercial arms and Wei&szlig;' 16-solution manipulator.
+      (c) Seven-axis arms with one joint held: range of the number of solutions, <span class="m">\infty</span> for self-motion.
+    </figcaption>
+  </figure>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Manipulator</th><th>Model</th><th>Full-rank routes</th><th>Real solutions</th><th>Time (ms) median / p99</th><th>Agree with numerical IK</th></tr></thead>
+    <tbody>
+      <tr><td>ABB IRB 140</td><td>DH</td><td>3</td><td>4&ndash;8</td><td>1.32 / 1.62</td><td>20/20</td></tr>
+      <tr><td>Kawasaki RS007L</td><td>URDF</td><td>2</td><td>8</td><td>1.45 / 1.75</td><td>20/20</td></tr>
+      <tr><td>UFACTORY Lite 6</td><td>URDF</td><td>4</td><td>8</td><td>1.52 / 1.99</td><td>20/20</td></tr>
+      <tr><td>Universal Robots UR3e</td><td>URDF</td><td>1</td><td>2&ndash;8</td><td>1.37 / 2.08</td><td>20/20</td></tr>
+      <tr><td>DENSO COBOTTA</td><td>URDF</td><td>4</td><td>2&ndash;12</td><td>1.38 / 1.69</td><td>20/20</td></tr>
+      <tr><td>FANUC CRX-5iA</td><td>URDF</td><td>2</td><td>4&ndash;16</td><td>1.43 / 1.89</td><td>53/53</td></tr>
+      <tr class="sep"><td>Wei&szlig; manipulator</td><td>DH</td><td>4</td><td>4&ndash;16</td><td>1.42 / 1.95</td><td>5/5</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="note">Timings: one core of an Intel Core Ultra 9 285K. They depend on the machine and the NumPy build.</p>
+</section>
+
+<section id="code">
+  <h2>Code</h2>
+  <p>
+    One Python file, NumPy only, MIT License. It reads DH parameters or a URDF file, holds extra joints
+    of redundant arms at given angles, and returns every solution with its angles in
+    <span class="m">[-\pi,\pi)</span>.
+  </p>
+<pre><code>import numpy as np
+from trigo_ik import TrigoIK
+
+ik = TrigoIK.from_urdf("robots/crx5ia.urdf")              # or TrigoIK.from_dh(d, a, alpha)
+T = ik.fk(np.random.default_rng(0).uniform(-np.pi, np.pi, 6))
+Q = ik.ik(T)                                              # (n, 6): all solutions
+print(len(Q), ik.residual(Q, T).max())
+
+ik7 = TrigoIK.from_urdf("robots/fr3.urdf", locked={"joint3": 0.4})   # 7-axis arm, joint 3 held</code></pre>
+  <table class="files">
+    <tbody>
+      <tr><td><a href="trigo_ik/trigo_ik.py">trigo_ik.py</a></td><td>the solver, in a single file</td></tr>
+      <tr><td><a href="trigo_ik/example.py">example.py</a></td><td>DH robot, URDF robot, 7-axis arm with one joint held</td></tr>
+      <tr><td><a href="trigo_ik/experiments.py">experiments.py</a></td><td>smaller-scale versions of the experiments (about half a minute)</td></tr>
+      <tr><td><a href="trigo_ik/show_solutions.py">show_solutions.py</a></td><td>draws all solutions of a target with matplotlib</td></tr>
+      <tr><td><a href="trigo_ik/README.md">README.md</a></td><td>usage, DH and URDF conventions, method in brief</td></tr>
+    </tbody>
+  </table>
+  <p><a class="btn primary" href="trigo_ik.zip" download>Download code (.zip)</a></p>
+</section>
+
+</main>
+
+<footer class="wrap">
+  <p>Code released under the MIT License. Robot meshes &copy; their respective vendors.</p>
+</footer>
+
+<script>
+document.querySelectorAll('.m').forEach(e => {
+  try { katex.render(e.textContent, e, { throwOnError: false }); } catch (_) {}
+});
+</script>
+<script type="module" src="assets/app.js"></script>
+</body>
+</html>

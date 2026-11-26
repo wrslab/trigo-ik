@@ -1,0 +1,59 @@
+<?xml version="1.0"?>
+<!-- crx5ia: kinematics only (joint frames, axes, limits), no meshes -->
+<robot name="crx5ia">
+  <link name="base_link"/>
+  <link name="link1"/>
+  <link name="link2"/>
+  <link name="link3"/>
+  <link name="link4"/>
+  <link name="link5"/>
+  <link name="link6"/>
+  <link name="flange"/>
+  <joint name="joint1" type="revolute">
+    <parent link="base_link"/>
+    <child link="link1"/>
+    <origin xyz="0 0 0.185" rpy="0 0 0"/>
+    <axis xyz="0 0 1.0"/>
+    <limit lower="-3.4907" upper="3.4907" effort="0" velocity="0"/>
+  </joint>
+  <joint name="joint2" type="revolute">
+    <parent link="link1"/>
+    <child link="link2"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <axis xyz="0 1.0 0"/>
+    <limit lower="-3.1398" upper="3.1398" effort="0" velocity="0"/>
+  </joint>
+  <joint name="joint3" type="revolute">
+    <parent link="link2"/>
+    <child link="link3"/>
+    <origin xyz="0 0 0.41" rpy="0 0 0"/>
+    <axis xyz="0 -1.0 0"/>
+    <limit lower="-1.1868" upper="4.3284" effort="0" velocity="0"/>
+  </joint>
+  <joint name="joint4" type="revolute">
+    <parent link="link3"/>
+    <child link="link4"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <axis xyz="-1.0 0 0"/>
+    <limit lower="-3.3161" upper="3.3161" effort="0" velocity="0"/>
+  </joint>
+  <joint name="joint5" type="revolute">
+    <parent link="link4"/>
+    <child link="link5"/>
+    <origin xyz="0.43 0 0" rpy="0 0 0"/>
+    <axis xyz="0 -1.0 0"/>
+    <limit lower="-3.1398" upper="3.1398" effort="0" velocity="0"/>
+  </joint>
+  <joint name="joint6" type="revolute">
+    <parent link="link5"/>
+    <child link="link6"/>
+    <origin xyz="0 -0.13 0" rpy="0 0 0"/>
+    <axis xyz="-1.0 0 0"/>
+    <limit lower="-3.927" upper="3.927" effort="0" velocity="0"/>
+  </joint>
+  <joint name="flange_joint" type="fixed">
+    <parent link="link6"/>
+    <child link="flange"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+</robot>
